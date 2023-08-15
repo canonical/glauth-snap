@@ -49,14 +49,51 @@ parts:
     source-subdir: v2
     source-type: git
     source: https://github.com/glauth/glauth
-    source-tag: "v2.2.0-RC1"
+    source-branch: master
+    override-pull: |
+      craftctl default
+      
+      # Pull necessary plugins for backend sql databases.
+      need_update=false
+      for plugin in sqlite mysql postgres
+      do
+          if [ ! -d "$CRAFT_PART_SRC_WORK/pkg/plugins/glauth-$plugin" ]
+          then
+              # Pull in the plugins
+              make -C $CRAFT_PART_SRC_WORK pull-plugin U=https://github.com/glauth/glauth-$plugin M=pkg/plugins/glauth-$plugin
+          else
+              echo "Plugin $plugin already exists. submodule update needed."
+              need_update=true
+          fi
+      done
+
+      # Apply local patches
+      for patch in `ls -1 $CRAFT_PROJECT_DIR/patches/*.patch`
+      do
+          echo "Applying patch $patch..."
+          git -C $CRAFT_PART_SRC_WORK apply $patch
+      done
+
     override-build: |
       # Set the version of the snap
       craftctl set version="$(git describe)"
 
       # Build GLAuth
-      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT fast
-
+      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT TRIM_FLAGS="-trimpath" fast
+      
+      # Build plugins
+      available_plugins=$(ls -1 $CRAFT_PART_SRC_WORK/pkg/plugins | grep "glauth-" | cut -f2 -d'-')
+      for plugin in $available_plugins
+      do
+          echo "Building plugin $plugin"
+          make -C $CRAFT_PART_SRC_WORK plugin_$plugin
+      done
+      
       # Grab built binary
       mkdir -p $CRAFT_PART_INSTALL/bin
-      cp -r $CRAFT_PART_SRC_WORK/bin/*/glauth $CRAFT_PART_INSTALL/bin/
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/glauth $CRAFT_PART_INSTALL/bin/
+      
+      # Copy the plugin .so files to the lib directory
+      mkdir -p $CRAFT_PART_INSTALL/lib/glauth
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/*.so $CRAFT_PART_INSTALL/lib/glauth/
+
