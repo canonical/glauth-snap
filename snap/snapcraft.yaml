@@ -1,31 +1,21 @@
-# Copyright 2023 Canonical Ltd.
-# See LICENSE file for licensing details.
----
 name: glauth
 base: core22
 adopt-info: glauth
 version: git
 summary: A lightweight LDAP server for development, home use, or CI
-description: |
-  Go-lang LDAP Authentication (GLAuth) is a secure, easy-to-use,
-   LDAP server w/ configurable backends.
-
-  Centrally manage accounts across your infrastructure.
-  Centrally manage SSH keys, Linux accounts, and passwords for cloud servers.
-  Lightweight alternative to OpenLDAP and Active Directory for development, or
-   a homelab.
-  Store your user directory in a file, local or in S3; SQL database; or proxy
-   to existing LDAP servers.
-  Two Factor Authentication (transparent to applications).
-  Multiple backends can be chained to inject features.
-  Use it to centralize account management across your Linux servers, your OSX
-   machines, and your support applications (Jenkins, Apache/Nginx, Graylog2,
-    and many more!).
+description: "Go-lang LDAP Authentication (GLAuth) is a secure, easy-to-use,\n LDAP\
+  \ server w/ configurable backends.\n\nCentrally manage accounts across your infrastructure.\n\
+  Centrally manage SSH keys, Linux accounts, and passwords for cloud servers.\nLightweight\
+  \ alternative to OpenLDAP and Active Directory for development, or\n a homelab.\n\
+  Store your user directory in a file, local or in S3; SQL database; or proxy\n to\
+  \ existing LDAP servers.\nTwo Factor Authentication (transparent to applications).\n\
+  Multiple backends can be chained to inject features.\nUse it to centralize account\
+  \ management across your Linux servers, your OSX\n machines, and your support applications\
+  \ (Jenkins, Apache/Nginx, Graylog2,\n  and many more!).\n"
 license: Apache-2.0
 website: https://glauth.github.io/
 grade: stable
 confinement: strict
-
 apps:
   glauth:
     environment:
@@ -39,7 +29,6 @@ apps:
       - home
       - network
       - network-bind
-
 parts:
   glauth:
     plugin: make
@@ -51,7 +40,8 @@ parts:
     source-type: git
     source: https://github.com/glauth/glauth
     source-branch: dev
-    override-build: '# Set the version of the snap
+    override-build: |
+      # Set the version of the snap
 
       craftctl set version="$(git describe)"
 
@@ -60,9 +50,14 @@ parts:
 
       make -C $CRAFT_PART_SRC_WORK pull-base-plugins
 
-      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres fast
+      # plugin_pam fails so leaving that out
+
+      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres plugin_mysql plugin_sqlite fast
 
 
       # Grab built binary
+
       mkdir -p $CRAFT_PART_INSTALL/bin
-      cp -r $CRAFT_PART_SRC_WORK/bin/*/glauth $CRAFT_PART_INSTALL/bin/
+
+      cp -r $CRAFT_PART_SRC_WORK/bin/*/{glauth,*.so} $CRAFT_PART_INSTALL/bin/
+
