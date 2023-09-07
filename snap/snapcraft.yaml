@@ -45,7 +45,8 @@ parts:
     plugin: make
     build-snaps:
       - go
-    make-parameters: ["fast"]
+    build-packages:
+      - libpam0g-dev
     source-subdir: v2
     source-type: git
     source: https://github.com/glauth/glauth
@@ -55,7 +56,11 @@ parts:
       craftctl set version="$(git describe)"
 
       # Build GLAuth
-      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT fast
+
+      make -C $CRAFT_PART_SRC_WORK pull-base-plugins
+
+      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres fast
+
 
       # Grab built binary
       mkdir -p $CRAFT_PART_INSTALL/bin
