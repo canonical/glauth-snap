@@ -14,7 +14,13 @@ description: "Go-lang LDAP Authentication (GLAuth) is a secure, easy-to-use,\n L
   \ (Jenkins, Apache/Nginx, Graylog2,\n  and many more!).\n"
 license: Apache-2.0
 website: https://glauth.github.io/
-grade: stable
+architectures:
+  - build-on: amd64
+    build-for: amd64
+  - build-on: arm64
+    build-for: arm64
+# grade: stable
+grade: devel
 confinement: strict
 apps:
   glauth:
@@ -52,7 +58,7 @@ parts:
 
       # plugin_pam fails so leaving that out
 
-      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres plugin_mysql plugin_sqlite fast
+      PLUGIN_ARCH=$SNAP_ARCH GOARCH=$SNAP_ARCH make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres plugin_mysql plugin_sqlite linux$SNAP_ARCH
 
 
       # Grab built binary
