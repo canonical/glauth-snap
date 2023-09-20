@@ -1,17 +1,26 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+---
 name: glauth
 base: core22
 adopt-info: glauth
 version: git
 summary: A lightweight LDAP server for development, home use, or CI
-description: "Go-lang LDAP Authentication (GLAuth) is a secure, easy-to-use,\n LDAP\
-  \ server w/ configurable backends.\n\nCentrally manage accounts across your infrastructure.\n\
-  Centrally manage SSH keys, Linux accounts, and passwords for cloud servers.\nLightweight\
-  \ alternative to OpenLDAP and Active Directory for development, or\n a homelab.\n\
-  Store your user directory in a file, local or in S3; SQL database; or proxy\n to\
-  \ existing LDAP servers.\nTwo Factor Authentication (transparent to applications).\n\
-  Multiple backends can be chained to inject features.\nUse it to centralize account\
-  \ management across your Linux servers, your OSX\n machines, and your support applications\
-  \ (Jenkins, Apache/Nginx, Graylog2,\n  and many more!).\n"
+description: |
+  Go-lang LDAP Authentication (GLAuth) is a secure, easy-to-use,
+   LDAP server w/ configurable backends.
+
+  Centrally manage accounts across your infrastructure.
+  Centrally manage SSH keys, Linux accounts, and passwords for cloud servers.
+  Lightweight alternative to OpenLDAP and Active Directory for development, or
+   a homelab.
+  Store your user directory in a file, local or in S3; SQL database; or proxy
+   to existing LDAP servers.
+  Two Factor Authentication (transparent to applications).
+  Multiple backends can be chained to inject features.
+  Use it to centralize account management across your Linux servers, your OSX
+   machines, and your support applications (Jenkins, Apache/Nginx, Graylog2,
+    and many more!).
 license: Apache-2.0
 website: https://glauth.github.io/
 architectures:
@@ -46,7 +55,7 @@ parts:
     source-branch: master
     override-pull: |
       craftctl default
-      
+
       # Pull necessary plugins for backend sql databases.
       need_update=false
       for plugin in sqlite mysql postgres
@@ -54,7 +63,9 @@ parts:
           if [ ! -d "$CRAFT_PART_SRC_WORK/pkg/plugins/glauth-$plugin" ]
           then
               # Pull in the plugins
-              make -C $CRAFT_PART_SRC_WORK pull-plugin U=https://github.com/glauth/glauth-$plugin M=pkg/plugins/glauth-$plugin
+              U=https://github.com/glauth/glauth-$plugin \
+                M=pkg/plugins/glauth-$plugin \
+                make -C $CRAFT_PART_SRC_WORK pull-plugin
           else
               echo "Plugin $plugin already exists. submodule update needed."
               need_update=true
@@ -67,7 +78,6 @@ parts:
           echo "Applying patch $patch..."
           git -C $CRAFT_PART_SRC_WORK apply $patch
       done
-
     override-build: |
       # Set the version of the snap
       craftctl set version="$(git describe)"
@@ -76,15 +86,18 @@ parts:
 
       # plugin_pam fails so leaving that out
 
-      PLUGIN_ARCH=$SNAP_ARCH GOARCH=$SNAP_ARCH make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT plugin_postgres plugin_mysql plugin_sqlite linux$SNAP_ARCH
+      PLUGIN_ARCH=$SNAP_ARCH GOARCH=$SNAP_ARCH \
+        make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT \
+        plugin_postgres plugin_mysql plugin_sqlite linux$SNAP_ARCH
 
 
       # Grab built binary
 
       mkdir -p $CRAFT_PART_INSTALL/bin
-      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/glauth $CRAFT_PART_INSTALL/bin/
-      
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/glauth \
+        $CRAFT_PART_INSTALL/bin/
+
       # Copy the plugin .so files to the lib directory
       mkdir -p $CRAFT_PART_INSTALL/lib/glauth
-      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/*.so $CRAFT_PART_INSTALL/lib/glauth/
-
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/*.so \
+        $CRAFT_PART_INSTALL/lib/glauth/
