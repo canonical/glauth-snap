@@ -75,6 +75,7 @@ jobs:
   function-test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         plugin: 
         - mysql
