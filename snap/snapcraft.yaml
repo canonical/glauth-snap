@@ -23,9 +23,13 @@ description: |
     and many more!).
 license: Apache-2.0
 website: https://glauth.github.io/
+architectures:
+  - build-on: amd64
+    build-for: amd64
+  - build-on: arm64
+    build-for: arm64
 grade: stable
 confinement: strict
-
 apps:
   glauth:
     environment:
@@ -39,24 +43,60 @@ apps:
       - home
       - network
       - network-bind
-
 parts:
   glauth:
     plugin: make
     build-snaps:
       - go
-    make-parameters: ["fast"]
     source-subdir: v2
     source-type: git
     source: https://github.com/glauth/glauth
-    source-tag: "v2.2.0-RC1"
+    source-tag: "v2.2.1"
+    override-pull: |
+      craftctl default
+
+      # Pull necessary plugins for backend sql databases.
+      need_update=false
+      for plugin in sqlite mysql postgres
+      do
+          if [ ! -d "$CRAFT_PART_SRC_WORK/pkg/plugins/glauth-$plugin" ]
+          then
+              # Pull in the plugins
+              U=https://github.com/glauth/glauth-$plugin \
+                M=pkg/plugins/glauth-$plugin \
+                make -C $CRAFT_PART_SRC_WORK pull-plugin
+          else
+              echo "Plugin $plugin already exists. submodule update needed."
+              need_update=true
+          fi
+      done
+
+      # Apply local patches
+      for patch in `ls -1 $CRAFT_PROJECT_DIR/patches/*.patch`
+      do
+          echo "Applying patch $patch..."
+          git -C $CRAFT_PART_SRC_WORK apply $patch
+      done
     override-build: |
       # Set the version of the snap
       craftctl set version="$(git describe)"
 
       # Build GLAuth
-      make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT fast
+
+      # plugin_pam fails so leaving that out
+
+      PLUGIN_ARCH=$SNAP_ARCH GOARCH=$SNAP_ARCH \
+        make -C $CRAFT_PART_SRC_WORK -j$CRAFT_PARALLEL_BUILD_COUNT \
+        plugin_postgres plugin_mysql plugin_sqlite linux$SNAP_ARCH
+
 
       # Grab built binary
+
       mkdir -p $CRAFT_PART_INSTALL/bin
-      cp -r $CRAFT_PART_SRC_WORK/bin/*/glauth $CRAFT_PART_INSTALL/bin/
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/glauth \
+        $CRAFT_PART_INSTALL/bin/
+
+      # Copy the plugin .so files to the lib directory
+      mkdir -p $CRAFT_PART_INSTALL/lib/glauth
+      cp $CRAFT_PART_SRC_WORK/bin/linux$CRAFT_TARGET_ARCH/*.so \
+        $CRAFT_PART_INSTALL/lib/glauth/
